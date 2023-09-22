@@ -1,0 +1,7 @@
+"0","test <- get_lat_lon(paste0(folder_path,'/IMG_2058.HEIC'))
+"
+"2","Error in configure_exiftoolr(quiet = quiet) : 
+  No functioning version of Exiftool has been found. To
+download and install a local version into the exiftoolr
+package, try doing install_exiftool().
+"
