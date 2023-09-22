@@ -17,8 +17,42 @@ library(magick)
 ```
 
 ```{r}
-folder_path <- "D:/GitHub/Large-District-Tours/HEIC"
+photo_folder_path <- "D:/GitHub/Large-District-Tours/photos"
 data_list <- list()
+```
+
+```{r}
+#function that converts HEIC type photos to JPG
+convert_heic_to_jpg <- function(photo_folder_path) {
+  heic_files <- list.files(photo_folder_path, pattern = "\\.heic$", full.names = TRUE, ignore.case = TRUE)
+  
+  counter <- 0
+  for (heic_file in heic_files) {
+    jpg_file <- file.path(photo_folder_path, sprintf("%02d.jpg", counter))
+    img <- image_read(heic_file)
+    image_write(img, jpg_file, format = "jpg")
+    file.rename(heic_file, file.path(photo_folder_path, sprintf("%02d.heic", counter)))
+    counter <- counter + 1
+  }
+}
+
+#function that delete .heic photos
+delete_heic_files <- function(folder_path) {
+  files <- list.files(path = folder_path, full.names = TRUE)
+
+  heic_files <- files[grep("\\.heic$", files, ignore.case = TRUE)]
+  if (length(heic_files) > 0) {
+    file.remove(heic_files)
+    cat(paste(length(heic_files), "HEIC file(s) deleted.\n"))
+  } else {
+    cat("No HEIC files found in the specified folder.\n")
+  }
+}
+```
+
+```{r}
+#convert_heic_to_jpg(photo_folder_path)
+#delete_heic_files(photo_folder_path)
 ```
 
 ```{r}
@@ -29,50 +63,50 @@ get_lat_lon <- function(file_path) {
   lon <- metadata$GPSLongitude
     return(c(lat, lon))
 }
+text <- exif_read(paste0(photo_folder_path,'/00.heic'))
 ```
 
-```{r}
-copy_heic_to_png <- function(heic_path) {
-  png_path <- gsub("\\.HEIC$", ".png", heic_path, ignore.case = TRUE)
-  system2("heif-convert", args = c(heic_path, png_path))
-  return(png_path)
-}
-```
 
 ```{r}
 # Read HEIC photos, extract coordinates, and store in data_list
-for (file_name in list.files(folder_path, pattern = "\\.HEIC$", full.names = TRUE)) {
+counter <- 0
+for (file_name in list.files(photo_folder_path, pattern = "\\.heic$", full.names = TRUE)) {
   coords <- get_lat_lon(file_name)
+  jpg_file <- file.path(photo_folder_path, sprintf("%02d.jpg", counter))
+  counter <- counter + 1
   if (!is.null(coords)) {
-    png_path <- copy_heic_to_png(file_name)
     data_list[[length(data_list) + 1]] <- list(
       lat = coords[1],
       lon = coords[2],
-      photo_path = png_path
+      photo_path = jpg_file
     )
   }
+  if (is.null(coords)) {cat("No coords\n")}
 }
 ```
 
 ```{r}
-map <- leaflet() %>%
+library(leaflet)
+pts <- tibble(x = runif(10, 175, 176), 
+              y = runif(10, -38, -37)) %>% 
+  st_as_sf(coords = c("x", "y"), crs = 4326)
+
+img <- glue::glue("https://github.com/IQAndreas/sample-images/blob/gh-pages/100-100-color/{11:20}.jpg?raw=true")
+
+pts$img <- img
+
+leaflet() %>%
   addTiles() %>%
-  addMarkers(
-    lng = sapply(data_list, function(x) x$lon),
-    lat = sapply(data_list, function(x) x$lat),
-    popup = lapply(data_list, function(x) {
-      img_src <- x$photo_path
-      popup_content <- paste0("<img src='", img_src, "' width='200' />")
-      return(popupImage(popup_content))
-    })
-  )
-map
+  addCircleMarkers(data = pts, group = "pts") %>%
+  leafpop::addPopupImages(pts$img, group = "pts")
 ```
+
+
+
 
 ```{r}
-htmlwidgets::saveWidget(map, "map.html", selfcontained = TRUE)
+#htmlwidgets::saveWidget(map, "map.html", selfcontained = TRUE)
 ```
-
 
 ```{r}
 #library(sf)
@@ -91,6 +125,7 @@ htmlwidgets::saveWidget(map, "map.html", selfcontained = TRUE)
 #m
 #mapshot(m, url = paste0(getwd(), "/testmap.html"))
 ```
+
 ```{r}
 library(leaflet)
 pts <- tibble(x = runif(10, 175, 176), 
